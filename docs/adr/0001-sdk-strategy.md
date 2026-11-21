@@ -283,7 +283,34 @@ The fallback environment `with-invocation-logs` in the same file turns invocatio
 
 ### 11. D1 rows written, and the daily cap
 
-The spike's table (`migrations/0001_probe_records.sql`) stores no request content: only `received_at`, `classification_kind`, `classification_era` and `reply_status`, with an index on each of the first three. One insert reports `meta.rows_written = 4` in local D1: one table row plus one entry per index. It is still 4 when the indexed `classification_era` column is NULL, and all 301 inserts made through `wrangler dev` reported 4. This is local D1 only; owner-run step 5 confirms the remote number.
+The spike's table (`migrations/0001_probe_records.sql`) stores no request content: only `received_at`, `classification_kind`, `classification_era` and `reply_status`, with an index on each of the first three. One insert reports `meta.rows_written = 4` in local D1: one table row plus one entry per index. It is still 4 when the indexed `classification_era` column is NULL, and all 301 inserts made through `wrangler dev` reported 4. Owner-run step 5 confirmed the same figure on remote D1 on 2026-11-21: one insert reported `"rows_written": 4` and `"changes": 1`.
+
+**Remote `--json` output shape.** `wrangler d1 execute --remote --json` prints a JSON array with one object per statement. Each object has `results` (an array of row objects keyed by column name), `success`, and `meta`. The owner's `SELECT` returned this, with `meta` shortened:
+
+```json
+[
+  {
+    "results": [
+      {
+        "id": 1,
+        "received_at": "2026-11-21T15:27:50.574Z",
+        "classification_kind": "modern",
+        "classification_era": "modern",
+        "reply_status": 200
+      }
+    ],
+    "success": true,
+    "meta": {
+      "rows_read": 1,
+      "rows_written": 0,
+      "changes": 0,
+      "duration": 0.6804
+    }
+  }
+]
+```
+
+`meta` also carries `served_by`, `served_by_region`, `served_by_colo`, `served_by_primary`, `timings.sql_duration_ms`, `last_row_id`, `changed_db`, `size_after` and `total_attempts`. An export script reads `[0].results` and should check `[0].success`.
 
 The Free plan allows 100,000 rows written per day, resetting at 00:00 UTC. Past the limit, "you will not be able to run queries against D1" ([D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/), read 2026-11-12, last updated 2026-10-30). The D1 limits page does not state the daily row limits; only the pricing page does.
 
@@ -362,9 +389,9 @@ The local `meta` has only `duration`, even for an `INSERT`. The `--remote` shape
 9. No compatibility flag is needed with SDK 2.3.1 on a current compatibility date.
 10. Keep invocation logs off, and log nothing a client supplied, including SDK error messages.
 
-### Local-only figures, pending owner-run steps
+### Confirmed on remote D1 by owner-run step 5
 
-11. One insert with three indexes writes 4 rows in **local** D1. On Workers Paid, the included 50 million rows written a month cover 12.5 million such inserts. Owner-run step 5 confirms the remote figure.
+11. One insert with three indexes writes 4 rows, locally and on remote D1 (owner-run step 5). On Workers Paid, the included 50 million rows written a month cover 12.5 million such inserts.
 
 ### Settled by owner-run step 4a
 
@@ -372,7 +399,7 @@ The local `meta` has only `duration`, even for an `INSERT`. The `--remote` shape
 
 ## Owner-run steps
 
-These need a Cloudflare account, which the spike did not use. Run them from `spikes/issue-1/` in this order. The owner ran steps 3 and 4a on 2026-11-21. Step 3's results are in section 9 and step 4a's are in section 8. The output of step 5 has not been recorded yet.
+These need a Cloudflare account, which the spike did not use. Run them from `spikes/issue-1/` in this order. The owner ran steps 3, 4a and 5 on 2026-11-21. Step 3's results are in section 9, step 4a's in section 8, and step 5's in section 11. Step 4b was not needed, because step 4a returned p95.
 
 > **Warning: the scratch Worker is public.** `wrangler deploy` publishes it on `workers.dev`, where anyone can call `/mcp` and `/mcp-d1`. It stores no request content and keeps invocation logs off, but it is unauthenticated and its rate limiter is not enforced. Run step 6 as soon as the measurements are done.
 
