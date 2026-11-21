@@ -198,6 +198,10 @@ Commands: `npm run bench:node`, `node scripts/bench-node.ts 100 20 legacy-first`
 
 The reason is in the package, not the runtime. `@modelcontextprotocol/server` exports a `workerd` condition for its `./_shims` entry (`package.json` line 64). Wrangler resolves it to `shimsWorkerd.mjs`, which uses the `@cfworker/json-schema` validator and imports no `node:` module. The local dev bundle (696,926 bytes uncompressed, 139,297 gzipped) contains `shimsWorkerd.mjs` and no `node:` import.
 
+**Deployed bundle and startup, measured by the owner on 2026-11-21 (owner-run step 3).** `wrangler deploy` reported `Total Upload: 675.80 KiB / gzip: 135.00 KiB` and `Worker Startup Time: 59 ms`. Both are far inside the limits. The Worker size limit is 64 MiB uncompressed on both Free and Paid, and only the uncompressed figure counts; the startup limit is 1 second for parsing and running the Worker's top-level code ([Workers limits](https://developers.cloudflare.com/workers/platform/limits/), read 2026-11-21). The SDK, the workerd validator and the probe code therefore use about 1% of the size limit and about 6% of the startup limit.
+
+In the owner's run, `wrangler d1 create` also added a second binding, `canimcp_probe_spike_1` with `"remote": true`, to the local `wrangler.jsonc`, so the deploy listed two D1 bindings to the same database. The code uses only `DB`, so the extra binding is unused and changes none of the figures. The committed `wrangler.jsonc` does not include it.
+
 The current documentation also changed the question. For compatibility dates of 2026-08-04 or later, Workers enables both `nodejs_compat` and `nodejs_compat_v2` by default, and the flags are ignored ([Node.js compatibility](https://developers.cloudflare.com/workers/runtime-apis/nodejs/), read 2026-11-12, last updated 2026-08-12; [Compatibility flags](https://developers.cloudflare.com/workers/configuration/compatibility-flags/), last updated 2026-09-18). So `nodejs_compat_v2` is not stale, but it is redundant on a current date.
 
 `scripts/compat-matrix.sh`, run against `wrangler dev --local`. The last column is what the local-only `/__runtime` route reported for `typeof process` and `typeof Buffer`, which proves the setting took effect:
@@ -368,7 +372,7 @@ The local `meta` has only `duration`, even for an `INSERT`. The `--remote` shape
 
 ## Owner-run steps
 
-These need a Cloudflare account, which the spike did not use. Run them from `spikes/issue-1/` in this order. The owner ran step 4a on 2026-11-21; its results are in section 8. The output of steps 3 and 5 has not been recorded yet.
+These need a Cloudflare account, which the spike did not use. Run them from `spikes/issue-1/` in this order. The owner ran steps 3 and 4a on 2026-11-21. Step 3's results are in section 9 and step 4a's are in section 8. The output of step 5 has not been recorded yet.
 
 > **Warning: the scratch Worker is public.** `wrangler deploy` publishes it on `workers.dev`, where anyone can call `/mcp` and `/mcp-d1`. It stores no request content and keeps invocation logs off, but it is unauthenticated and its rate limiter is not enforced. Run step 6 as soon as the measurements are done.
 
