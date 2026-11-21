@@ -1,0 +1,27 @@
+{
+  "name": "canimcp-probe-spike-issue-1",
+  "private": true,
+  "description": "Throwaway spike for issue #1: raw capture in front of @modelcontextprotocol/server 2.3.1 on a Worker.",
+  "type": "module",
+  "scripts": {
+    "types": "wrangler types",
+    "typecheck": "wrangler types && tsc --noEmit",
+    "test": "vitest run",
+    "dev": "wrangler dev --local",
+    "d1:migrate:local": "wrangler d1 migrations apply canimcp-probe-spike-1 --local",
+    "bench:node": "node scripts/bench-node.ts",
+    "bench:workerd": "SPIKE_BENCH=1 vitest run --silent=false bench/workerd-wall.test.ts && SPIKE_BENCH=1 vitest run --silent=false bench/workerd-cold-legacy.test.ts",
+    "bench:http": "node scripts/bench-http.ts",
+    "compat:matrix": "sh scripts/compat-matrix.sh"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.3.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.8.0",
+    "@types/node": "26.6.6",
+    "typescript": "7.0.2",
+    "vitest": "5.1.0",
+    "wrangler": "4.160.1"
+  }
+}
